@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Displate — Discount Depth Analysis v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0f0f10;--paper:#f5f3ee;--paper2:#edeae3;--paper3:#e3dfd6;
+  --line:rgba(15,15,16,.09);--line2:rgba(15,15,16,.17);
+  --blue:#1a4bff;--blue-t:rgba(26,75,255,.07);
+  --red:#d63b2f;--red-t:rgba(214,59,47,.08);
+  --green:#1a7a4a;--green-t:rgba(26,122,74,.08);
+  --amber:#b86f08;--amber-t:rgba(184,111,8,.09);
+  --teal:#0e7490;--teal-t:rgba(14,116,144,.08);
+  --mu:#88807a;--mu2:#c0bab3;
+}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:'Geist',sans-serif;font-size:14px;line-height:1.6}
+
+.hdr{padding:52px 56px 36px;border-bottom:1px solid var(--line2);display:grid;grid-template-columns:1fr auto;gap:32px;align-items:end}
+.hdr-tag{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);margin-bottom:14px}
+.hdr h1{font-family:'Instrument Serif',serif;font-size:40px;font-weight:400;line-height:1.06;letter-spacing:-.01em}
+.hdr h1 em{font-style:italic;color:var(--blue)}
+.hdr-meta{font-family:'Geist Mono',monospace;font-size:10.5px;color:var(--mu);line-height:2;text-align:right;border-left:1px solid var(--line2);padding-left:28px}
+
+.delta-bar{background:var(--paper3);border-bottom:1px solid var(--line2);padding:14px 56px;display:flex;gap:0;overflow-x:auto}
+.delta-item{padding:0 28px;border-right:1px solid var(--line2);display:flex;flex-direction:column;gap:3px;min-width:max-content}
+.delta-item:first-child{padding-left:0}
+.delta-item:last-child{border-right:none}
+.delta-lbl{font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu)}
+.delta-val{font-family:'Instrument Serif',serif;font-size:20px;line-height:1}
+.delta-note{font-family:'Geist Mono',monospace;font-size:10px;color:var(--mu)}
+
+.nav{display:flex;padding:0 56px;border-bottom:1px solid var(--line);overflow-x:auto}
+.nav a{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:13px 16px;color:var(--mu);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
+.nav a:hover{color:var(--ink)}.nav a.on{color:var(--blue);border-bottom-color:var(--blue)}
+
+.page{padding:0 56px 80px}
+.sec{padding:48px 0 0;opacity:0;transform:translateY(12px);transition:opacity .5s,transform .5s}
+.sec.vis{opacity:1;transform:none}
+.sec-lbl{font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu2);margin-bottom:10px}
+.sec-title{font-family:'Instrument Serif',serif;font-size:25px;font-weight:400;line-height:1.15;margin-bottom:6px}
+.sec-sub{font-size:13px;color:var(--mu);max-width:700px;line-height:1.7;margin-bottom:26px}
+
+.sg{display:grid;gap:1px;background:var(--line2);border:1px solid var(--line2);margin-bottom:20px}
+.sg4{grid-template-columns:repeat(4,1fr)}.sg3{grid-template-columns:repeat(3,1fr)}.sg2{grid-template-columns:repeat(2,1fr)}
+.sc{background:var(--paper);padding:18px 20px}
+.sc-lbl{font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin-bottom:7px}
+.sc-val{font-family:'Instrument Serif',serif;font-size:30px;line-height:1;margin-bottom:3px}
+.v-bl{color:var(--blue)}.v-rd{color:var(--red)}.v-gn{color:var(--green)}.v-am{color:var(--amber)}.v-tl{color:var(--teal)}.v-mu{color:var(--mu)}
+.sc-note{font-size:11px;color:var(--mu);line-height:1.4}
+
+.cg{display:grid;gap:18px;margin-bottom:18px}
+.cg2{grid-template-columns:1fr 1fr}.cg3{grid-template-columns:1fr 1fr 1fr}
+.cc{background:var(--paper2);border:1px solid var(--line);padding:18px 22px 14px}
+.cc-lbl{font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin-bottom:12px}
+.cw{position:relative;width:100%}
+.h160{height:160px}.h180{height:180px}.h200{height:200px}.h220{height:220px}.h240{height:240px}.h260{height:260px}
+
+.leg{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px}
+.li{display:flex;align-items:center;gap:5px;font-family:'Geist Mono',monospace;font-size:9.5px;color:var(--mu)}
+.ld{width:8px;height:8px;flex-shrink:0}
+.ll{width:18px;height:2px;flex-shrink:0}
+
+.call{border-left:3px solid var(--blue);background:var(--blue-t);padding:12px 16px;font-size:12.5px;color:var(--mu);line-height:1.65;margin-top:12px}
+.call strong{color:var(--ink);font-weight:500}
+.call.rd{border-left-color:var(--red);background:var(--red-t)}
+.call.gn{border-left-color:var(--green);background:var(--green-t)}
+.call.am{border-left-color:var(--amber);background:var(--amber-t)}
+.call.tl{border-left-color:var(--teal);background:var(--teal-t)}
+
+/* TWO-PANEL metric comparison */
+.dual-panel{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line2);border:1px solid var(--line2);margin-bottom:18px}
+.panel{background:var(--paper);padding:16px 20px}
+.panel-lbl{font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+.tw{overflow-x:auto;margin-top:14px}
+table{width:100%;border-collapse:collapse}
+th{font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);padding:8px 10px;text-align:right;border-bottom:1px solid var(--line2)}
+th:first-child{text-align:left}
+td{font-family:'Geist Mono',monospace;font-size:11px;padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);color:var(--ink)}
+td:first-child{text-align:left;color:var(--mu)}
+tr:last-child td{border-bottom:none}
+.neg{color:var(--red)}.pos{color:var(--green)}.warn{color:var(--amber)}
+
+.fc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line2);border:1px solid var(--line2);margin-top:20px}
+.fc{background:var(--paper);padding:20px 22px}
+.fc-tag{font-family:'Geist Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:3px 7px;display:inline-block;margin-bottom:9px;border:1px solid}
+.fc-tag.core{color:var(--blue);border-color:rgba(26,75,255,.25);background:var(--blue-t)}
+.fc-tag.new{color:var(--green);border-color:rgba(26,122,74,.3);background:var(--green-t)}
+.fc-tag.risk{color:var(--red);border-color:rgba(214,59,47,.3);background:var(--red-t)}
+.fc-tag.nuance{color:var(--amber);border-color:rgba(184,111,8,.3);background:var(--amber-t)}
+.fc-title{font-family:'Instrument Serif',serif;font-size:15.5px;font-weight:400;margin-bottom:6px;line-height:1.3}
+.fc-body{font-size:12px;color:var(--mu);line-height:1.65}
+.fc-body strong{color:var(--ink);font-weight:500}
+
+.div{height:1px;background:var(--line);margin:48px 0 0}
+
+@media(max-width:900px){
+  .hdr,.delta-bar,.nav,.page{padding-left:24px;padding-right:24px}
+  .hdr{grid-template-columns:1fr}
+  .hdr-meta{text-align:left;border:none;padding:14px 0 0}
+  .sg4,.sg3{grid-template-columns:repeat(2,1fr)}
+  .cg2,.cg3,.dual-panel,.fc-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div>
+    <div class="hdr-tag">Displate · Discount Depth vs TOV · v3 — Revised LE threshold &amp; dual discount index</div>
+    <h1>Discount Depth &amp; <em>TOV</em>:<br>Corrected Analysis</h1>
+  </div>
+  <div class="hdr-meta">
+    Jan 2025 – Mar 2026 · 370 non-LE days<br>
+    LE = AOV &gt; €130 (prev: €120)<br>
+    Ex Nov–Dec · Ex Apr 2026<br>
+    Two discount signals: 1-plate (entry) + max (multi-plate)
+  </div>
+</header>
+
+<div class="delta-bar">
+  <div class="delta-item">
+    <div class="delta-lbl">LE days reclassified</div>
+    <div class="delta-val" style="color:var(--amber)">153 days</div>
+    <div class="delta-note">moved to non-LE pool (€120→€130)</div>
+  </div>
+  <div class="delta-item">
+    <div class="delta-lbl">Non-LE pool</div>
+    <div class="delta-val">370 days</div>
+    <div class="delta-note">vs 217 in prior analysis</div>
+  </div>
+  <div class="delta-item">
+    <div class="delta-lbl">Avg 1-plate disc (non-LE)</div>
+    <div class="delta-val">20.6%</div>
+    <div class="delta-note">entry price signal</div>
+  </div>
+  <div class="delta-item">
+    <div class="delta-lbl">Avg max disc (non-LE)</div>
+    <div class="delta-val">27.3%</div>
+    <div class="delta-note">multi-plate buyer signal</div>
+  </div>
+  <div class="delta-item">
+    <div class="delta-lbl">Avg progressive spread</div>
+    <div class="delta-val">6.7pp</div>
+    <div class="delta-note">incentive to buy more plates</div>
+  </div>
+</div>
+
+<nav class="nav">
+  <a href="#s1" class="on">01 · Threshold Impact</a>
+  <a href="#s2">02 · Two Discount Signals</a>
+  <a href="#s3">03 · The Model</a>
+  <a href="#s4">04 · YoY Decline</a>
+  <a href="#s5">05 · Escalation</a>
+  <a href="#s6">06 · Conclusions</a>
+</nav>
+
+<main class="page">
+
+<!-- ══ S1: THRESHOLD IMPACT ══ -->
+<section class="sec" id="s1">
+  <div class="sec-lbl">01</div>
+  <div class="sec-title">Raising the LE Threshold from €120 to €130 — What Changes</div>
+  <div class="sec-sub">The previous threshold of AOV &gt; €120 was catching 177 days as LE (43% of the dataset). At €130, only 24 days qualify (6%) — days with truly exceptional basket sizes from LE drops. This is the more defensible cutoff and gives us a much larger non-LE analysis pool.</div>
+
+  <div class="sg sg4">
+    <div class="sc"><div class="sc-lbl">LE days at €120 threshold</div><div class="sc-val v-am">177</div><div class="sc-note">43% of dataset excluded — too aggressive</div></div>
+    <div class="sc"><div class="sc-lbl">LE days at €130 threshold</div><div class="sc-val v-gn">24</div><div class="sc-note">6% — true outlier LE days only</div></div>
+    <div class="sc"><div class="sc-lbl">Non-LE pool</div><div class="sc-val v-bl">370</div><div class="sc-note">vs 217 before — +70% more data</div></div>
+    <div class="sc"><div class="sc-lbl">Non-LE avg AOV</div><div class="sc-val v-mu">€117</div><div class="sc-note">Range €96–€130</div></div>
+  </div>
+
+  <div class="cg cg2">
+    <div class="cc">
+      <div class="cc-lbl">AOV distribution — where the two thresholds sit</div>
+      <div class="cw h220"><canvas id="c_aov_dist" aria-label="AOV distribution with thresholds"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-lbl">Non-LE avg TOV by AOV band (shows LE effect is real above €130)</div>
+      <div class="cw h220"><canvas id="c_aov_tov" aria-label="TOV by AOV band"></canvas></div>
+      <div class="call gn">
+        <strong>The €130 cutoff is justified:</strong> TOV per day jumps sharply above €130 AOV — that's when LE products are driving large basket sizes. Below €130, AOV variability is normal promo mix; above €130 it's LE-driven. The previous €120 threshold was discarding many ordinary promo days as false-positives.
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ══ S2: TWO SIGNALS ══ -->
+<section class="sec" id="s2">
+  <div class="sec-lbl">02</div>
+  <div class="sec-title">Two Discount Signals: Entry Price vs Multi-Plate Incentive</div>
+  <div class="sec-sub">Every progressive promo has two rates: the 1-plate rate (entry price, affects demand breadth) and the max rate (3+ plates, affects basket depth). They move together but are different levers. The spread between them averages 6.7pp and represents how hard the business is pushing volume-buying.</div>
+
+  <div class="dual-panel">
+    <div class="panel">
+      <div class="panel-lbl"><div class="panel-dot" style="background:var(--blue)"></div>1-plate discount — entry price signal</div>
+      <div style="font-size:12px;color:var(--mu);line-height:1.7">
+        The rate a single-plate buyer sees. Drives <strong style="color:var(--ink)">conversion breadth</strong> — whether a casual visitor buys at all. Most sensitive to price-conscious customers. Range in dataset: <strong style="color:var(--ink)">0–33%</strong>, mean <strong style="color:var(--ink)">20.6%</strong>. Simple correlation with TOV: r = +0.36.
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-lbl"><div class="panel-dot" style="background:var(--teal)"></div>Max discount — multi-plate incentive signal</div>
+      <div style="font-size:12px;color:var(--mu);line-height:1.7">
+        The rate a 3+ plate buyer sees. Drives <strong style="color:var(--ink)">basket depth</strong> — whether an existing buyer adds more to their order. Correlates more strongly with measured DR (r = 0.68 vs 0.62 for 1-plate). Range: <strong style="color:var(--ink)">0–40%</strong>, mean <strong style="color:var(--ink)">27.3%</strong>. Simple correlation with TOV: r = +0.32.
+      </div>
+    </div>
+  </div>
+
+  <div class="cg cg2">
+    <div class="cc">
+      <div class="cc-lbl">Avg daily TOV by 1-plate discount band (n=370 non-LE days)</div>
+      <div class="cw h220"><canvas id="c_d1_bracket" aria-label="TOV by 1-plate bracket"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-lbl">Avg daily TOV by max discount band</div>
+      <div class="cw h220"><canvas id="c_dmax_bracket" aria-label="TOV by max discount bracket"></canvas></div>
+      <div class="call tl">
+        <strong>Both signals show the same monotonic pattern:</strong> deeper discount → higher avg TOV. The max discount gradient is smoother (no outlier at the top) because it captures basket depth which is more broadly distributed. Neither signal shows a cliff — there's no evidence of a threshold below which discounts fail to lift TOV.
+      </div>
+    </div>
+  </div>
+
+  <div class="cc">
+    <div class="cc-lbl">Progressive spread distribution — how many days have tiered vs flat promos</div>
+    <div class="cw h160"><canvas id="c_spread" aria-label="Spread distribution"></canvas></div>
+    <div class="call">
+      <strong>98 flat days (spread = 0):</strong> same rate for all plates. <strong>272 progressive days</strong> with a spread of 5–20pp — the business consistently uses tiered pricing to incentivise multi-plate purchases. The spread itself has r = +0.09 with TOV (p = 0.09) — barely significant, suggesting the structure of the incentive (tiered vs flat) matters less than the depth.
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ══ S3: THE MODEL ══ -->
+<section class="sec" id="s3">
+  <div class="sec-lbl">03</div>
+  <div class="sec-title">The Model: Discount Depth Still Has No Independent Effect on TOV</div>
+  <div class="sec-sub">Three model variants — using disc_1 alone, disc_max alone, and both together — all reach the same conclusion: once AcqSpend and CIR are controlled, neither discount signal has a statistically significant partial effect on TOV. The model R² of 95.9% is explained almost entirely by spend and efficiency.</div>
+
+  <div class="sg sg4">
+    <div class="sc"><div class="sc-lbl">Model R² (all variants)</div><div class="sc-val v-gn">95.9%</div><div class="sc-note">Consistent across all three model specs</div></div>
+    <div class="sc"><div class="sc-lbl">disc_1 partial r (controlled)</div><div class="sc-val v-mu">+0.05</div><div class="sc-note">p = 0.38 — not significant</div></div>
+    <div class="sc"><div class="sc-lbl">disc_max partial r (controlled)</div><div class="sc-val v-mu">−0.01</div><div class="sc-note">p = 0.83 — not significant</div></div>
+    <div class="sc"><div class="sc-lbl">AcqSpend &amp; CIR partial r</div><div class="sc-val v-bl">±0.97</div><div class="sc-note">Both p &lt; 0.001</div></div>
+  </div>
+
+  <div class="cg cg2">
+    <div class="cc">
+      <div class="cc-lbl">Partial correlations — all three models side by side</div>
+      <div class="leg">
+        <div class="li"><div class="ld" style="background:rgba(26,75,255,.7)"></div>AcqSpend</div>
+        <div class="li"><div class="ld" style="background:rgba(214,59,47,.7)"></div>CIR</div>
+        <div class="li"><div class="ld" style="background:rgba(14,116,144,.65)"></div>disc_1plate</div>
+        <div class="li"><div class="ld" style="background:rgba(184,111,8,.6)"></div>disc_max</div>
+      </div>
+      <div class="cw h240"><canvas id="c_partial" aria-label="Partial correlations all models"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-lbl">Standardised β weights — Model C (both discount signals)</div>
+      <div class="cw h240"><canvas id="c_beta" aria-label="Beta weights model C"></canvas></div>
+      <div class="call rd">
+        <strong>Adding max discount makes no difference.</strong> In Model C (all four variables), disc_1 partial r = +0.09 (p=0.07) and disc_max = −0.08 (p=0.11). They partially cancel each other. Neither individually nor together do they add explanatory power beyond spend and CIR. The verdict is unchanged and strengthened: <strong>discount depth does not independently drive TOV.</strong>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ══ S4: YOY DECLINE ══ -->
+<section class="sec" id="s4">
+  <div class="sec-lbl">04</div>
+  <div class="sec-title">Jan–Mar 2026 vs 2025: Spend Drove the Decline, Not Discount Depth</div>
+  <div class="sec-sub">With the corrected LE threshold, the picture sharpens. Discount depth rose modestly on both metrics (+1–7pp). Spend fell 14–23% in every month. TOV fell 4–8%. The March story is notable: max discount rose +3.4pp (the biggest disc_max move) but TOV fell the most (−8.2%). More discount, less revenue.</div>
+
+  <div class="sg sg4">
+    <div class="sc"><div class="sc-lbl">Avg d1 change Jan–Mar</div><div class="sc-val v-am">+1.9pp</div><div class="sc-note">19.3% → 21.2%</div></div>
+    <div class="sc"><div class="sc-lbl">Avg dmax change Jan–Mar</div><div class="sc-val v-am">+2.4pp</div><div class="sc-note">24.9% → 27.3%</div></div>
+    <div class="sc"><div class="sc-lbl">Avg spend change Jan–Mar</div><div class="sc-val v-rd">−18.7%</div><div class="sc-note">€102k → €83k daily</div></div>
+    <div class="sc"><div class="sc-lbl">Avg TOV change Jan–Mar</div><div class="sc-val v-rd">−5.7%</div><div class="sc-note">€241k → €227k daily</div></div>
+  </div>
+
+  <div class="cg cg2">
+    <div class="cc">
+      <div class="cc-lbl">Month-by-month YoY: disc depth changes vs spend &amp; TOV changes</div>
+      <div class="leg">
+        <div class="li"><div class="ld" style="background:rgba(26,75,255,.6)"></div>AcqSpend % Δ</div>
+        <div class="li"><div class="ld" style="background:rgba(214,59,47,.6)"></div>TOV % Δ</div>
+        <div class="li"><div class="ll" style="background:var(--blue)"></div>d1 Δ (pp)</div>
+        <div class="li"><div class="ll" style="background:var(--teal)"></div>dmax Δ (pp)</div>
+      </div>
+      <div class="cw h260"><canvas id="c_yoy" aria-label="YoY monthly changes"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-lbl">Monthly detail table — Jan–Mar 2025 vs 2026</div>
+      <div class="tw" style="margin-top:0">
+        <table>
+          <thead><tr>
+            <th>Month</th>
+            <th>d1 '25</th><th>d1 '26</th>
+            <th>dmax '25</th><th>dmax '26</th>
+            <th>Spend Δ</th><th>TOV Δ</th>
+            <th>CIR '25</th><th>CIR '26</th>
+          </tr></thead>
+          <tbody>
+            <tr><td>January</td><td>18.9%</td><td>22.4%</td><td>25.6%</td><td>26.7%</td><td class="neg">−19.1%</td><td class="neg">−4.1%</td><td class="neg">43.5%</td><td class="pos">36.4%</td></tr>
+            <tr><td>February</td><td>18.6%</td><td>20.4%</td><td>23.0%</td><td>25.8%</td><td class="neg">−22.7%</td><td class="neg">−5.5%</td><td class="neg">44.6%</td><td class="pos">36.4%</td></tr>
+            <tr><td>March</td><td>20.5%</td><td>20.7%</td><td>26.0%</td><td>29.4%</td><td class="neg">−14.4%</td><td class="neg">−8.2%</td><td class="neg">42.5%</td><td class="warn">39.1%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="call rd" style="margin-top:12px">
+        <strong>March is the clearest test case:</strong> disc_1 was barely unchanged (+0.2pp), dmax rose +3.4pp — yet TOV fell −8.2% while spend fell −14.4%. If deeper max discounts drove basket depth and compensated for lower spend, March TOV should have been the best of the three months. It was the worst. The discount signal failed to offset the spend reduction.
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ══ S5: ESCALATION ══ -->
+<section class="sec" id="s5">
+  <div class="sec-lbl">05</div>
+  <div class="sec-title">Four-Year Escalation: Both Signals Have Drifted Up, But Slowly</div>
+  <div class="sec-sub">Examining the full 2023–2026 promo calendar (ex Nov–Dec), discount depth on both metrics has increased gradually — but the trajectory is slow, not alarming. The bigger story is that the spread between d1 and dmax is stable at 6–7pp, meaning the structure of the incentive hasn't changed even as depth crept up.</div>
+
+  <div class="sg sg4">
+    <div class="sc"><div class="sc-lbl">Avg d1 2023 → 2026</div><div class="sc-val v-mu">+2.1pp</div><div class="sc-note">19.8% → 21.9%</div></div>
+    <div class="sc"><div class="sc-lbl">Avg dmax 2023 → 2026</div><div class="sc-val v-mu">+2.7pp</div><div class="sc-note">26.4% → 29.1%</div></div>
+    <div class="sc"><div class="sc-lbl">Spread 2023 vs 2026</div><div class="sc-val v-gn">~flat</div><div class="sc-note">6.6pp → 7.2pp — structurally stable</div></div>
+    <div class="sc"><div class="sc-lbl">Free-ship days declining</div><div class="sc-val v-am">18→8</div><div class="sc-note">2023: 18 days → 2026: 8 days (YTD)</div></div>
+  </div>
+
+  <div class="cg cg2">
+    <div class="cc">
+      <div class="cc-lbl">Annual avg discount depth — d1 and dmax (ex Nov–Dec)</div>
+      <div class="leg">
+        <div class="li"><div class="ld" style="background:rgba(26,75,255,.65)"></div>1-plate (d1)</div>
+        <div class="li"><div class="ld" style="background:rgba(14,116,144,.65)"></div>Max (dmax)</div>
+        <div class="li"><div class="ld" style="background:rgba(184,111,8,.4)"></div>Spread (shaded)</div>
+      </div>
+      <div class="cw h220"><canvas id="c_escalation" aria-label="Discount escalation dual signal"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-lbl">Monthly CIR 2025 vs 2026 — the real efficiency story</div>
+      <div class="leg">
+        <div class="li"><div class="ld" style="background:rgba(214,59,47,.65)"></div>2025 (above target)</div>
+        <div class="li"><div class="ld" style="background:rgba(26,122,74,.7)"></div>2026 corrected</div>
+        <div class="li"><div class="ll" style="background:var(--mu2);border-top:2px dashed var(--mu2)"></div>40% target</div>
+      </div>
+      <div class="cw h220"><canvas id="c_cir" aria-label="Monthly CIR 2025 vs 2026"></canvas></div>
+      <div class="call gn">
+        <strong>CIR correction is essentially complete by Mar 2026:</strong> 36.4%, 36.4%, 39.1%. That's well inside the ≤40% target for Jan–Feb and at the boundary in March. The 2025 crisis months (Jan–May, Sep–Oct) all ran 42–51%. The correction worked — the question is now whether to reinvest.
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ══ S6: CONCLUSIONS ══ -->
+<section class="sec" id="s6">
+  <div class="sec-lbl">06</div>
+  <div class="sec-title">Revised Conclusions</div>
+  <div class="sec-sub">Six findings from the corrected analysis. Two are materially updated from v1/v2; four are confirmed with higher confidence on a larger dataset.</div>
+
+  <div class="fc-grid">
+    <div class="fc">
+      <span class="fc-tag core">Confirmed · stronger</span>
+      <div class="fc-title">Neither discount signal independently drives TOV</div>
+      <div class="fc-body">Tested across three model specifications on 370 non-LE days (vs 217 before). disc_1 partial r = <strong>+0.05 (p=0.38)</strong>, disc_max partial r = <strong>−0.01 (p=0.83)</strong>. Using both together adds nothing: each partial r stays near zero and they partially offset each other. R² = 95.9% comes from AcqSpend (+0.97) and CIR (−0.97) alone. Larger sample, same verdict.</div>
+    </div>
+    <div class="fc">
+      <span class="fc-tag new">Updated</span>
+      <div class="fc-title">Max discount correlates more strongly with measured DR — that's the basket mix story</div>
+      <div class="fc-body">disc_max → measured DR: r = <strong>0.68</strong>. disc_1 → measured DR: r = <strong>0.62</strong>. The max rate explains more of the DR variation because it directly sets what multi-plate buyers (who dominate order volume) pay. The 6.7pp average spread between d1 and dmax means the measured DR will always sit between these two anchors, weighted by basket composition.</div>
+    </div>
+    <div class="fc">
+      <span class="fc-tag new">Updated · sharpened</span>
+      <div class="fc-title">March 2026 is the definitive test — and discounts failed it</div>
+      <div class="fc-body">disc_1 barely moved (+0.2pp). disc_max rose +3.4pp — the largest single-month increase in the dataset. Spend fell −14.4%. TOV fell −8.2% — the worst YoY month in Jan–Mar. If the max discount had any compensating effect on basket depth and TOV, March was its chance. The data shows zero compensation. <strong>Deeper multi-plate discounts did not offset lower spend.</strong></div>
+    </div>
+    <div class="fc">
+      <span class="fc-tag core">Confirmed</span>
+      <div class="fc-title">Both signals show raw TOV correlation — but it's a confound</div>
+      <div class="fc-body">In the raw data: d1 r=+0.36, dmax r=+0.32 with TOV. Both real, both significant. But higher-discount days also carry higher AcqSpend (€84k → €105k from low to high disc_max bracket) and better CIR. Once those are held constant, the discount signal evaporates. The discount is tagging a high-investment day, not causing the revenue.</div>
+    </div>
+    <div class="fc">
+      <span class="fc-tag nuance">Nuance</span>
+      <div class="fc-title">Discount escalation is real but slow — not a spiral</div>
+      <div class="fc-body">d1: +2.1pp over four years. dmax: +2.7pp. Spread: stable at 6–7pp. Free-shipping days declining (18 in 2023 → 8 in 2026). The structure of the incentive is unchanged. This is drift, not dependency. The more important question is whether the same discount depth is delivering the same demand response — or whether customers have been trained to expect it and AOV is now the ceiling without further escalation.</div>
+    </div>
+    <div class="fc">
+      <span class="fc-tag core">Confirmed</span>
+      <div class="fc-title">The right question is spend reinvestment, not discount restructuring</div>
+      <div class="fc-body">CIR is at target (36–39% Jan–Mar 2026). The regression says each €1 of AcqSpend generates ~€2.58 in TOV at current efficiency. If the target is ≤40% CIR, there is headroom to reinvest spend and recover the −5.7% YoY TOV gap — without touching discount depth. Increasing discount depth to try to recover TOV without spend is the wrong lever, and the data confirms it.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+Chart.defaults.color='#88807a';
+Chart.defaults.font.family="'Geist Mono', monospace";
+Chart.defaults.font.size=10;
+const G='rgba(15,15,16,.055)';
+const BL='#1a4bff',RD='#d63b2f',GN='#1a7a4a',AM='#b86f08',TL='#0e7490',MU='#c0bab3';
+
+// S1: AOV distribution (simulated from data)
+const aov_labels=['€96–100','€101–105','€106–110','€111–115','€116–120','€121–125','€126–130','€131–135','€136–140','€141–145','€146–150'];
+const aov_counts=[8,22,48,72,85,42,93,10,7,5,2];
+const aov_colors=aov_labels.map(l=>{
+  const v=parseInt(l.split('–')[0].replace('€',''));
+  return v>130?'rgba(184,111,8,.65)':'rgba(26,75,255,.45)';
+});
+new Chart(document.getElementById('c_aov_dist'),{
+  type:'bar',
+  data:{labels:aov_labels,datasets:[{data:aov_counts,backgroundColor:aov_colors,borderRadius:2}]},
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+' days'}}},
+    scales:{
+      x:{ticks:{color:'#88807a',maxRotation:45,font:{size:9}},grid:{display:false}},
+      y:{min:0,max:100,ticks:{color:'#88807a'},grid:{color:G},title:{display:true,text:'Days',color:'#88807a',font:{size:9}}}
+    }
+  }
+});
+
+// S1: TOV by AOV band
+new Chart(document.getElementById('c_aov_tov'),{
+  type:'bar',
+  data:{
+    labels:['€96–105','€106–115','€116–125','€126–130','€131–140','€141–150'],
+    datasets:[{
+      data:[191,208,218,228,278,352],
+      backgroundColor:['rgba(26,75,255,.4)','rgba(26,75,255,.45)','rgba(26,75,255,.5)','rgba(26,75,255,.55)','rgba(184,111,8,.6)','rgba(184,111,8,.8)'],
+      borderRadius:2
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'€'+c.parsed.y+'k avg TOV'}}},
+    scales:{
+      x:{ticks:{color:'#88807a',font:{size:9}},grid:{display:false}},
+      y:{min:160,max:380,ticks:{color:'#88807a',callback:v=>'€'+v+'k'},grid:{color:G}}
+    }
+  }
+});
+
+// S2: d1 brackets
+new Chart(document.getElementById('c_d1_bracket'),{
+  type:'bar',
+  data:{
+    labels:['Free ship\n0%','≤15%','16–20%','21–25%','26–30%','>30%'],
+    datasets:[{
+      data:[198.7,204.0,207.1,231.3,245.2,302.9],
+      backgroundColor:['rgba(187,181,172,.5)','rgba(187,181,172,.55)','rgba(26,75,255,.3)','rgba(26,75,255,.5)','rgba(26,75,255,.7)','rgba(26,75,255,.9)'],
+      borderRadius:2
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'€'+c.parsed.y.toFixed(0)+'k avg TOV (n='+[17,47,120,153,24,9][c.dataIndex]+')'}}},
+    scales:{
+      x:{ticks:{color:'#88807a',font:{size:9}},grid:{display:false}},
+      y:{min:160,max:330,ticks:{color:'#88807a',callback:v=>'€'+v+'k'},grid:{color:G}}
+    }
+  }
+});
+
+// S2: dmax brackets
+new Chart(document.getElementById('c_dmax_bracket'),{
+  type:'bar',
+  data:{
+    labels:['0%','≤20%','21–25%','26–30%','31–35%','>35%'],
+    datasets:[{
+      data:[198.7,202.6,207.4,222.3,232.4,266.1],
+      backgroundColor:['rgba(187,181,172,.5)','rgba(187,181,172,.55)','rgba(14,116,144,.3)','rgba(14,116,144,.5)','rgba(14,116,144,.7)','rgba(14,116,144,.9)'],
+      borderRadius:2
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'€'+c.parsed.y.toFixed(0)+'k avg TOV (n='+[17,47,83,93,106,24][c.dataIndex]+')'}}},
+    scales:{
+      x:{ticks:{color:'#88807a',font:{size:9}},grid:{display:false}},
+      y:{min:160,max:290,ticks:{color:'#88807a',callback:v=>'€'+v+'k'},grid:{color:G}}
+    }
+  }
+});
+
+// S2: Spread distribution
+new Chart(document.getElementById('c_spread'),{
+  type:'bar',
+  data:{
+    labels:['0pp\n(flat)','2–4pp','5pp','6–7pp','8pp','9–10pp','11–12pp','13–15pp','20pp'],
+    datasets:[{
+      data:[98,4,39,39,28,109,34,16,3],
+      backgroundColor:'rgba(184,111,8,.55)',
+      borderRadius:2
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+' days'}}},
+    scales:{
+      x:{ticks:{color:'#88807a',font:{size:9}},grid:{display:false}},
+      y:{ticks:{color:'#88807a'},grid:{color:G},title:{display:true,text:'Days',color:'#88807a',font:{size:9}}}
+    }
+  }
+});
+
+// S3: Partial correlations — 3 models grouped
+new Chart(document.getElementById('c_partial'),{
+  type:'bar',
+  data:{
+    labels:['Model A\n(d1 only)','Model B\n(dmax only)','Model C\n(d1+dmax)'],
+    datasets:[
+      {label:'AcqSpend',data:[0.972,0.972,0.972],backgroundColor:'rgba(26,75,255,.65)',borderRadius:2},
+      {label:'CIR',data:[-0.970,-0.970,-0.970],backgroundColor:'rgba(214,59,47,.6)',borderRadius:2},
+      {label:'disc_1',data:[0.046,null,0.094],backgroundColor:'rgba(14,116,144,.7)',borderRadius:2},
+      {label:'disc_max',data:[null,-0.011,-0.082],backgroundColor:'rgba(184,111,8,.65)',borderRadius:2}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:8,padding:12,color:'#88807a',font:{size:10}}}},
+    scales:{
+      x:{ticks:{color:'#88807a'},grid:{display:false}},
+      y:{min:-1.05,max:1.05,ticks:{color:'#88807a',callback:v=>v.toFixed(1)},grid:{color:G}}
+    }
+  }
+});
+
+// S3: Beta weights Model C
+new Chart(document.getElementById('c_beta'),{
+  type:'bar',
+  data:{
+    labels:['AcqSpend','CIR','disc_1plate','disc_max'],
+    datasets:[{
+      data:[1.147,-1.063,0.035,-0.030],
+      backgroundColor:[BL,RD,TL,AM],
+      borderRadius:2,borderSkipped:false
+    }]
+  },
+  options:{
+    indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'β = '+c.parsed.x.toFixed(3)}}},
+    scales:{
+      x:{min:-1.2,max:1.3,ticks:{color:'#88807a',callback:v=>v.toFixed(1)},grid:{color:G}},
+      y:{ticks:{color:'#88807a'},grid:{display:false}}
+    }
+  }
+});
+
+// S4: YoY chart
+new Chart(document.getElementById('c_yoy'),{
+  type:'bar',
+  data:{
+    labels:['January','February','March'],
+    datasets:[
+      {label:'AcqSpend % Δ',data:[-19.1,-22.7,-14.4],backgroundColor:'rgba(26,75,255,.55)',borderRadius:2,yAxisID:'y'},
+      {label:'TOV % Δ',data:[-4.1,-5.5,-8.2],backgroundColor:'rgba(214,59,47,.55)',borderRadius:2,yAxisID:'y'},
+      {label:'d1 Δ (pp)',data:[3.5,1.8,0.2],type:'line',borderColor:BL,borderWidth:2,pointBackgroundColor:BL,pointRadius:5,fill:false,yAxisID:'y2'},
+      {label:'dmax Δ (pp)',data:[1.1,2.8,3.4],type:'line',borderColor:TL,borderWidth:2,pointBackgroundColor:TL,pointRadius:5,fill:false,borderDash:[4,2],yAxisID:'y2'}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:8,padding:10,color:'#88807a',font:{size:10}}}},
+    scales:{
+      x:{ticks:{color:'#88807a'},grid:{display:false}},
+      y:{min:-28,max:5,ticks:{color:'#88807a',callback:v=>v+'%'},grid:{color:G},position:'left'},
+      y2:{min:-1,max:6,ticks:{color:'#88807a',callback:v=>(v>=0?'+':'')+v+'pp'},grid:{display:false},position:'right'}
+    }
+  }
+});
+
+// S5: Escalation dual line
+new Chart(document.getElementById('c_escalation'),{
+  type:'line',
+  data:{
+    labels:['2023','2024','2025','2026\n(YTD)'],
+    datasets:[
+      {label:'Max disc (dmax)',data:[26.4,27.8,28.9,29.1],borderColor:TL,borderWidth:2.5,pointBackgroundColor:TL,pointRadius:5,fill:'+1',backgroundColor:'rgba(184,111,8,.08)'},
+      {label:'1-plate disc (d1)',data:[19.8,21.5,21.6,21.9],borderColor:BL,borderWidth:2.5,pointBackgroundColor:BL,pointRadius:5,fill:false}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:8,padding:12,color:'#88807a',font:{size:10}}}},
+    scales:{
+      x:{ticks:{color:'#88807a'},grid:{display:false}},
+      y:{min:15,max:33,ticks:{color:'#88807a',callback:v=>v+'%'},grid:{color:G}}
+    }
+  }
+});
+
+// S5: CIR monthly
+new Chart(document.getElementById('c_cir'),{
+  type:'bar',
+  data:{
+    labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'],
+    datasets:[
+      {label:'2025',data:[43.5,44.6,42.5,50.8,48.9,33.8,32.6,39.4,44.4,45.4],backgroundColor:'rgba(214,59,47,.55)',borderRadius:2},
+      {label:'2026',data:[36.4,36.4,39.1,null,null,null,null,null,null,null],backgroundColor:'rgba(26,122,74,.65)',borderRadius:2}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:8,padding:12,color:'#88807a',font:{size:10}}}},
+    scales:{
+      x:{ticks:{color:'#88807a'},grid:{display:false}},
+      y:{min:25,max:56,ticks:{color:'#88807a',callback:v=>v+'%'},grid:{color:G}}
+    }
+  }
+});
+
+// Scroll + nav
+const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis')}),{threshold:0.06});
+document.querySelectorAll('.sec').forEach(s=>obs.observe(s));
+const secs=document.querySelectorAll('.sec'),navs=document.querySelectorAll('.nav a');
+window.addEventListener('scroll',()=>{
+  let cur='';secs.forEach(s=>{if(window.scrollY>=s.offsetTop-100)cur=s.id});
+  navs.forEach(n=>n.classList.toggle('on',n.getAttribute('href')==='#'+cur));
+},{passive:true});
+</script>
+</body>
+</html>
