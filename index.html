@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Displate — Analysis Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+/* Global Styles from Displate Design System */
+:root {
+  --ink: #1B1B1B; /* Eerie Black */
+  --paper: #FFFFFF; /* White Base */
+  --paper2: #F4F7F3; /* Alabaster */
+  --blue: #0062FF; /* Primary Blue */
+  --mu: #6B6B6A; /* Dim Grey */
+  --line: rgba(27,27,27,.1);
+}
+
+body { 
+  background: var(--paper); 
+  color: var(--ink); 
+  font-family: 'Inter', 'Geist', sans-serif; 
+  margin: 0; 
+}
+
+/* Dashboard Navigation */
+.dash-nav {
+  background: #0E0E0E; /* Night Black */
+  padding: 0 56px;
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.dash-nav button {
+  background: none;
+  border: none;
+  color: #6B6B6A;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  padding: 20px 0;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  border-bottom: 2px solid transparent;
+}
+
+.dash-nav button.active {
+  color: #00E0FF; /* Cyan Accent */
+  border-bottom-color: #00E0FF;
+}
+
+.report-container { display: none; }
+.report-container.active { display: block; }
+
+/* Embed existing report styles here or use iframes */
+iframe {
+  width: 100%;
+  height: 100vh;
+  border: none;
+}
+</style>
+</head>
+<body>
+
+<nav class="dash-nav">
+  <button onclick="showReport('influencer')" id="btn-influencer" class="active">01 · Influencer Performance</button>
+  <button onclick="showReport('discount')" id="btn-discount">02 · Discount Depth Analysis</button>
+</nav>
+
+<div id="influencer" class="report-container active">
+  <iframe src="influencer_report.html"></iframe>
+</div>
+
+<div id="discount" class="report-container">
+  <iframe src="discount_report.html"></iframe>
+</div>
+
+<script>
+function showReport(id) {
+  // Hide all
+  document.querySelectorAll('.report-container').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.dash-nav button').forEach(el => el.classList.remove('active'));
+  
+  // Show selected
+  document.getElementById(id).classList.add('active');
+  document.getElementById('btn-' + id).classList.add('active');
+}
+</script>
+
+</body>
+</html>
